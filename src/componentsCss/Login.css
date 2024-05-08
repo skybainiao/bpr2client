@@ -1,0 +1,68 @@
+/* 整体布局样式 */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f4f4f4;
+}
+
+/* 登录框样式 */
+.login-box {
+    padding: 2rem;
+    background-color: #ffffff;
+    border-radius: 30px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    width: 500px; /* 修改框的宽度为更合适的尺寸 */
+    height: 350px;
+    text-align: center;
+}
+
+/* 按钮和输入框的共用样式 */
+.button,
+input[type="text"],
+input[type="password"] {
+    padding: 10px;
+    margin-top: 10px; /* 减小顶部间距，保持视觉一致性 */
+    width: 100%; /* 调整宽度填满容器 */
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* 单独按钮样式 */
+.button {
+    background-color: #0056b3;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-top: 30px;
+}
+
+.button:hover {
+    background-color: #004494;
+}
+
+/* 标题样式 */
+.login-title {
+    margin-bottom: 30px; /* 调整间距 */
+    color: #333;
+}
+
+/* 切换按钮样式 */
+.toggle-buttons {
+    margin-bottom: 10px; /* 调整切换按钮的底部间距 */
+}
+
+.toggle-button {
+    background: none;
+    border: none;
+    color: #0056b3;
+    cursor: pointer;
+    padding: 5px 10px;
+    font-size: 16px;
+}
+
+.toggle-button.active {
+    border-bottom: 2px solid #0056b3;
+}

@@ -1,21 +1,42 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import StudentList from './components/StudentList';
-import StudentForm from './components/StudentForm';
-import Navbar from './components/Navbar';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './components/Login';
+import StudentExamPage from './components/StudentExamPage';
+import TeacherManagePage from './components/TeacherManagePage';
 
 function App() {
+    const { user } = useAuth();
+
     return (
         <Router>
             <div className="App">
-                <Navbar />
                 <Routes>
-                    <Route path="/add-student" element={<StudentForm />} />
-                    <Route path="/" element={<StudentList />} />
+                    <Route path="/" element={<Login />} />
+                    {user ? (
+                        <>
+                            {user.type === 'teacher' && (
+                                <Route path="/manage" element={<TeacherManagePage />} />
+                            )}
+                            {user.type === 'student' && (
+                                <Route path="/exam" element={<StudentExamPage />} />
+                            )}
+                        </>
+                    ) : (
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    )}
                 </Routes>
             </div>
         </Router>
     );
 }
 
-export default App;
+function WrappedApp() {
+    return (
+        <AuthProvider>
+            <App />
+        </AuthProvider>
+    );
+}
+
+export default WrappedApp;
