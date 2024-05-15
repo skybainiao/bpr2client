@@ -1,17 +1,60 @@
-import React from 'react';
-import { useAuth } from "../context/AuthContext"; // 确保路径正确
-import '../componentsCss/StudentExamPage.css'; // 引入样式文件
+import React, { useState } from 'react';
+import QuestionDisplay from './QuestionDisplay'; // 假设你已经有了这个组件
 
 function StudentExamPage() {
-    const { logout } = useAuth();
+    const [examPassword, setExamPassword] = useState('');
+    const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+    const [currentQuestion, setCurrentQuestion] = useState(null);
+
+    const verifyExamPassword = (password) => {
+        // 假设密码为 "exam2024"，在实际应用中应从服务器验证
+        return password === "exam2024";
+    };
+
+    const handlePasswordSubmit = (event) => {
+        event.preventDefault();
+        if (verifyExamPassword(examPassword)) {
+            setIsPasswordVerified(true);
+            setCurrentQuestion({
+                type: 'multiple-choice',
+                text: 'What is the capital of France?',
+                options: ['Paris', 'London', 'Berlin', 'Madrid']
+            });
+        } else {
+            alert("Incorrect exam password");
+        }
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('user');
+        window.location.reload(); // 刷新页面以返回登录页面
+    };
+
+    if (!isPasswordVerified) {
+        return (
+            <div>
+                <h1>Student Exam Page</h1>
+                <form onSubmit={handlePasswordSubmit}>
+                    <label>
+                        Exam Password:
+                        <input
+                            type="password"
+                            value={examPassword}
+                            onChange={(e) => setExamPassword(e.target.value)}
+                            required
+                        />
+                    </label>
+                    <button type="submit">Enter Exam</button>
+                </form>
+            </div>
+        );
+    }
 
     return (
-        <div className="student-exam-container">
-            <h1 className="exam-header">Student Exam Page</h1>
-            <div className="exam-content">
-                <p>Welcome to your exam. Your questions will appear here.</p>
-            </div>
-            <button onClick={logout} className="logout-button">Logout</button>
+        <div>
+            <h1>Student Exam Page</h1>
+            <QuestionDisplay question={currentQuestion} />
+            <button onClick={handleLogout}>Logout</button>
         </div>
     );
 }
