@@ -4,24 +4,65 @@ import QuestionDisplay from './QuestionDisplay'; // 假设你已经有了这个�
 function StudentExamPage() {
     const [examPassword, setExamPassword] = useState('');
     const [isPasswordVerified, setIsPasswordVerified] = useState(false);
-    const [currentQuestion, setCurrentQuestion] = useState(null);
+    const [questions, setQuestions] = useState([]);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const [answers, setAnswers] = useState([]);
+    const [currentAnswer, setCurrentAnswer] = useState('');
 
-    const verifyExamPassword = (password) => {
-        // 假设密码为 "exam2024"，在实际应用中应从服务器验证
-        return password === "exam2024";
+    const handlePasswordSubmit = async (event) => {
+        event.preventDefault();
+        try {
+            const response = await fetch('http://localhost:8080/exams/validate-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: examPassword })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setIsPasswordVerified(true);
+                setQuestions(data.questions); // 假设服务器返回的问题列表
+            } else {
+                alert("Incorrect exam password");
+            }
+        } catch (error) {
+            console.error('Error verifying password:', error);
+            alert('Failed to verify password');
+        }
     };
 
-    const handlePasswordSubmit = (event) => {
-        event.preventDefault();
-        if (verifyExamPassword(examPassword)) {
-            setIsPasswordVerified(true);
-            setCurrentQuestion({
-                type: 'multiple-choice',
-                text: 'What is the capital of France?',
-                options: ['Paris', 'London', 'Berlin', 'Madrid']
-            });
+    const handleAnswerChange = (event) => {
+        setCurrentAnswer(event.target.value);
+    };
+
+    const handleNextQuestion = () => {
+        setAnswers([...answers, { questionId: questions[currentQuestionIndex].id, answer: currentAnswer }]);
+        setCurrentAnswer('');
+        if (currentQuestionIndex < questions.length - 1) {
+            setCurrentQuestionIndex(currentQuestionIndex + 1);
         } else {
-            alert("Incorrect exam password");
+            handleSubmitAnswers();
+        }
+    };
+
+    const handleSubmitAnswers = async () => {
+        try {
+            const response = await fetch('http://localhost:8080/answers/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ answers })
+            });
+            if (response.ok) {
+                alert('Answers submitted successfully!');
+                setIsPasswordVerified(false);
+                setQuestions([]);
+                setCurrentQuestionIndex(0);
+                setAnswers([]);
+            } else {
+                alert('Failed to submit answers');
+            }
+        } catch (error) {
+            console.error('Error submitting answers:', error);
+            alert('Failed to submit answers');
         }
     };
 
@@ -53,7 +94,14 @@ function StudentExamPage() {
     return (
         <div>
             <h1>Student Exam Page</h1>
-            <QuestionDisplay question={currentQuestion} />
+            <QuestionDisplay
+                question={questions[currentQuestionIndex]}
+                answer={currentAnswer}
+                onAnswerChange={handleAnswerChange}
+            />
+            <button onClick={handleNextQuestion}>
+                {currentQuestionIndex < questions.length - 1 ? 'Next' : 'Submit'}
+            </button>
             <button onClick={handleLogout}>Logout</button>
         </div>
     );
