@@ -16,35 +16,42 @@ function TeacherManagePage() {
     const [correctAnswer, setCorrectAnswer] = useState('');
     const [questions, setQuestions] = useState([]); // 存储当前创建的问题列表
 
-    useEffect(() => {
-        // 获取课程列表
-        const fetchCourses = async () => {
-            try {
-                const response = await fetch('http://localhost:8080/courses/');
-                const data = await response.json();
-                setCourses(data);
-                if (data.length > 0) {
-                    setSelectedCourseId(data[0].id); // 默认选择第一个课程
-                }
-            } catch (error) {
-                console.error('Failed to fetch courses', error);
+    // 获取课程列表
+    const fetchCourses = async () => {
+        try {
+            const response = await fetch('http://localhost:8080/courses/');
+            const data = await response.json();
+            setCourses(data);
+            if (data.length > 0) {
+                setSelectedCourseId(data[0].id); // 默认选择第一个课程
             }
-        };
-        fetchCourses();
+        } catch (error) {
+            console.error('Failed to fetch courses', error);
+        }
+    };
 
-        // 获取考试列表
-        const fetchExams = async () => {
-            try {
-                const response = await fetch('http://localhost:8080/exams/');
-                const data = await response.json();
+    // 获取考试列表
+    const fetchExams = async () => {
+        try {
+            const response = await fetch('http://localhost:8080/exams/');
+            const data = await response.json();
+            console.log("Fetched exams:", data); // 添加日志
+            if (Array.isArray(data)) {
                 setExams(data);
                 if (data.length > 0) {
                     setExamId(data[0].id); // 默认选择第一个考试
                 }
-            } catch (error) {
-                console.error('Failed to fetch exams', error);
+            } else {
+                console.error('Fetched exams is not an array', data);
+                setExams([]);
             }
-        };
+        } catch (error) {
+            console.error('Failed to fetch exams', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchCourses();
         fetchExams();
     }, []);
 
@@ -74,6 +81,7 @@ function TeacherManagePage() {
                 const createdExam = await response.json();
                 setExamId(createdExam.id); // 设置新创建考试的ID
                 alert('Exam created successfully!');
+                await fetchExams(); // 重新获取考试列表
             } else {
                 const error = await response.json();
                 throw new Error(error.message || 'Failed to create exam');

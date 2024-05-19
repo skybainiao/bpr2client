@@ -1,28 +1,42 @@
-import React, { useState } from 'react';
-import QuestionDisplay from './QuestionDisplay'; // 假设你已经有了这个组件
+import React, { useState, useEffect } from 'react';
+import '../componentsCss/StudentExamPage.css';
 
 function StudentExamPage() {
     const [examPassword, setExamPassword] = useState('');
     const [isPasswordVerified, setIsPasswordVerified] = useState(false);
     const [questions, setQuestions] = useState([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [answers, setAnswers] = useState([]);
     const [currentAnswer, setCurrentAnswer] = useState('');
+    const [answers, setAnswers] = useState([]);
+    const [studentId, setStudentId] = useState(null); // 存储学生ID
+
+    useEffect(() => {
+        const storedUser = JSON.parse(localStorage.getItem('user'));
+        if (storedUser) {
+            setStudentId(storedUser.id);
+        }
+    }, []);
 
     const handlePasswordSubmit = async (event) => {
         event.preventDefault();
         try {
-            const response = await fetch('http://localhost:8080/exams/validate-password', {
+            const response = await fetch(`http://localhost:8080/exams/validate-password/${examPassword}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password: examPassword })
             });
             if (response.ok) {
                 const data = await response.json();
-                setIsPasswordVerified(true);
-                setQuestions(data.questions); // 假设服务器返回的问题列表
+                if (data.questions && data.questions.length > 0) {
+                    setQuestions(data.questions);
+                    setIsPasswordVerified(true);
+                    setCurrentQuestionIndex(0);
+                } else {
+                    alert('No questions found for this exam.');
+                }
             } else {
-                alert("Incorrect exam password");
+                const error = await response.json();
+                alert(error.message || "Incorrect exam password");
             }
         } catch (error) {
             console.error('Error verifying password:', error);
@@ -35,30 +49,47 @@ function StudentExamPage() {
     };
 
     const handleNextQuestion = () => {
-        setAnswers([...answers, { questionId: questions[currentQuestionIndex].id, answer: currentAnswer }]);
-        setCurrentAnswer('');
+        const updatedAnswers = [...answers];
+        updatedAnswers[currentQuestionIndex] = {
+            question: { id: questions[currentQuestionIndex].id },
+            student: { id: studentId },
+            studentAnswer: currentAnswer
+        };
+        setAnswers(updatedAnswers);
+
         if (currentQuestionIndex < questions.length - 1) {
             setCurrentQuestionIndex(currentQuestionIndex + 1);
+            setCurrentAnswer(answers[currentQuestionIndex + 1]?.studentAnswer || '');
         } else {
-            handleSubmitAnswers();
+            alert('You have reached the end of the exam.');
+            handleSubmitAnswers(updatedAnswers);
         }
     };
 
-    const handleSubmitAnswers = async () => {
+    const handlePreviousQuestion = () => {
+        if (currentQuestionIndex > 0) {
+            setCurrentQuestionIndex(currentQuestionIndex - 1);
+            setCurrentAnswer(answers[currentQuestionIndex - 1]?.studentAnswer || '');
+        }
+    };
+
+    const handleSubmitAnswers = async (answers) => {
         try {
             const response = await fetch('http://localhost:8080/answers/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ answers })
+                body: JSON.stringify(answers)
             });
             if (response.ok) {
                 alert('Answers submitted successfully!');
                 setIsPasswordVerified(false);
                 setQuestions([]);
                 setCurrentQuestionIndex(0);
+                setCurrentAnswer('');
                 setAnswers([]);
             } else {
-                alert('Failed to submit answers');
+                const error = await response.json();
+                alert(error.message || 'Failed to submit answers');
             }
         } catch (error) {
             console.error('Error submitting answers:', error);
@@ -73,9 +104,9 @@ function StudentExamPage() {
 
     if (!isPasswordVerified) {
         return (
-            <div>
+            <div className="exam-container">
                 <h1>Student Exam Page</h1>
-                <form onSubmit={handlePasswordSubmit}>
+                <form onSubmit={handlePasswordSubmit} className="exam-form">
                     <label>
                         Exam Password:
                         <input
@@ -85,24 +116,43 @@ function StudentExamPage() {
                             required
                         />
                     </label>
-                    <button type="submit">Enter Exam</button>
+                    <div className="button-group">
+                        <button type="submit" className="button-primary">Enter Exam</button>
+                        <button type="button" className="button-secondary" onClick={handleLogout}>Logout</button>
+                    </div>
                 </form>
             </div>
         );
     }
 
+    const currentQuestion = questions[currentQuestionIndex] || {};
+
     return (
-        <div>
+        <div className="exam-container">
             <h1>Student Exam Page</h1>
-            <QuestionDisplay
-                question={questions[currentQuestionIndex]}
-                answer={currentAnswer}
-                onAnswerChange={handleAnswerChange}
-            />
-            <button onClick={handleNextQuestion}>
-                {currentQuestionIndex < questions.length - 1 ? 'Next' : 'Submit'}
-            </button>
-            <button onClick={handleLogout}>Logout</button>
+            <div className="question-display">
+                <h2>Question {currentQuestionIndex + 1}:</h2>
+                <textarea
+                    readOnly
+                    value={currentQuestion.content}
+                    className="question-text"
+                />
+                <textarea
+                    placeholder="Write your answer here"
+                    value={currentAnswer}
+                    onChange={handleAnswerChange}
+                    className="answer-text"
+                />
+            </div>
+            <div className="exam-navigation">
+                <button className="button-secondary" onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
+                    Previous
+                </button>
+                <button className="button-primary" onClick={handleNextQuestion}>
+                    {currentQuestionIndex < questions.length - 1 ? 'Next' : 'Submit'}
+                </button>
+            </div>
+            <button type="button" className="button-logout" onClick={handleLogout}>Logout</button>
         </div>
     );
 }

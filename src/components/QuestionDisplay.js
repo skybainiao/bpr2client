@@ -1,20 +1,22 @@
 import React from 'react';
+import '../componentsCss/QuestionDisplay.css';
 
 function QuestionDisplay({ question, answer, onAnswerChange }) {
     return (
-        <div>
-            <h2>{question.text}</h2>
+        <div className="question-container">
+            <h2>{question.content}</h2>
             {question.type === 'multiple-choice' && (
-                <div>
-                    {question.options.map((option, index) => (
-                        <label key={index}>
+                <div className="options-container">
+                    {question.options && question.options.map((option, index) => (
+                        <label key={index} className="option-label">
                             <input
                                 type="radio"
                                 name="answer"
                                 value={option}
                                 checked={answer === option}
                                 onChange={onAnswerChange}
-                            /> {option}
+                            />
+                            {option}
                         </label>
                     ))}
                 </div>
@@ -25,6 +27,14 @@ function QuestionDisplay({ question, answer, onAnswerChange }) {
                     placeholder="Enter your answer"
                     value={answer}
                     onChange={onAnswerChange}
+                />
+            )}
+            {question.type === 'text' && (
+                <textarea
+                    placeholder="Write your answer here"
+                    value={answer}
+                    onChange={onAnswerChange}
+                    rows={4}
                 />
             )}
         </div>
