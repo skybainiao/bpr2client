@@ -1,115 +1,55 @@
-/* 整体布局样式 */
-.body {
-    background-color: #f4f4f4;
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-}
-
-/* 页面容器样式 */
-.page-container {
-    padding: 2rem;
-    max-width: 800px;
-    margin: auto;
-}
-
-/* 按钮容器样式 */
-.button-container {
+.container {
     display: flex;
-    justify-content: space-around;
-    margin-bottom: 2rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
 }
 
-/* 按钮样式 */
-.button-container button {
+.header {
+    margin: 20px;
+    font-size: 24px;
+}
+
+.button-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 20px;
+    margin: 20px;
+}
+
+.button-grid button {
     padding: 10px 20px;
     font-size: 16px;
-    border: none;
-    border-radius: 5px;
-    background-color: #007bff;
-    color: white;
     cursor: pointer;
-    transition: background-color 0.3s;
 }
 
-.button-container button:hover {
-    background-color: #0056b3;
-}
-
-/* 表单容器样式 */
 .form-container {
-    background-color: #ffffff;
-    padding: 2rem;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    margin: 20px;
 }
 
-/* 表单标签样式 */
 .form-container label {
     display: block;
-    margin-bottom: 1rem;
+    margin: 10px 0;
 }
 
-/* 表单输入框样式 */
-.form-container input,
-.form-container select,
-.form-container textarea {
-    width: 100%;
+.form-container input, .form-container textarea, .form-container select {
+    width: 300px;
     padding: 10px;
-    margin-top: 5px;
     font-size: 16px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-}
-
-/* 表单提交按钮样式 */
-.form-container button[type="submit"] {
-    width: 100%;
-    padding: 10px;
-    font-size: 18px;
-    border: none;
-    border-radius: 5px;
-    background-color: #28a745;
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.form-container button[type="submit"]:hover {
-    background-color: #218838;
-}
-
-/* 问题列表样式 */
-.question-list {
-    margin-top: 2rem;
 }
 
 .question-list ul {
-    list-style-type: none;
+    list-style: none;
     padding: 0;
 }
 
 .question-list li {
-    background-color: #f9f9f9;
-    padding: 10px;
-    margin-bottom: 5px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
+    margin: 10px 0;
 }
 
-.question-list button {
-    margin-top: 1rem;
-    width: 100%;
-    padding: 10px;
-    font-size: 18px;
-    border: none;
-    border-radius: 5px;
-    background-color: #007bff;
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.question-list button:hover {
-    background-color: #0056b3;
+video {
+    width: 400px;
+    height: 300px;
+    margin: 20px 0;
 }

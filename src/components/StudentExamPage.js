@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import SockJS from 'sockjs-client';
+import Stomp from 'stompjs';
 import '../componentsCss/StudentExamPage.css';
 
 function StudentExamPage() {
@@ -8,7 +10,10 @@ function StudentExamPage() {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [currentAnswer, setCurrentAnswer] = useState('');
     const [answers, setAnswers] = useState([]);
-    const [studentId, setStudentId] = useState(null); // 存储学生ID
+    const [studentId, setStudentId] = useState(null);
+    const [remainingTime, setRemainingTime] = useState(null);
+    const videoRef = useRef(null);
+    const stompClient = useRef(null);
 
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem('user'));
@@ -16,6 +21,23 @@ function StudentExamPage() {
             setStudentId(storedUser.id);
         }
     }, []);
+
+    useEffect(() => {
+        if (isPasswordVerified && remainingTime !== null) {
+            const timer = setInterval(() => {
+                setRemainingTime(prevTime => {
+                    if (prevTime <= 1) {
+                        clearInterval(timer);
+                        handleSubmitAnswers(answers);
+                        exitFullscreen();
+                        return 0;
+                    }
+                    return prevTime - 1;
+                });
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [isPasswordVerified, remainingTime]);
 
     const handlePasswordSubmit = async (event) => {
         event.preventDefault();
@@ -31,6 +53,10 @@ function StudentExamPage() {
                     setQuestions(data.questions);
                     setIsPasswordVerified(true);
                     setCurrentQuestionIndex(0);
+                    setRemainingTime(data.duration * 60);
+                    enterFullscreen();
+                    preventCheating();
+                    startVideoStream();
                 } else {
                     alert('No questions found for this exam.');
                 }
@@ -87,6 +113,9 @@ function StudentExamPage() {
                 setCurrentQuestionIndex(0);
                 setCurrentAnswer('');
                 setAnswers([]);
+                exitFullscreen();
+                allowNormalKeyboardShortcuts();
+                exitSEB();
             } else {
                 const error = await response.json();
                 alert(error.message || 'Failed to submit answers');
@@ -99,7 +128,95 @@ function StudentExamPage() {
 
     const handleLogout = () => {
         localStorage.removeItem('user');
-        window.location.reload(); // 刷新页面以返回登录页面
+        window.location.reload();
+    };
+
+    const enterFullscreen = () => {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.mozRequestFullScreen) {
+            elem.mozRequestFullScreen();
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+            elem.msRequestFullscreen();
+        }
+    };
+
+    const exitFullscreen = () => {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    };
+
+    const handleFullscreenChange = () => {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+            enterFullscreen();
+        }
+    };
+
+    const preventCheating = () => {
+        document.addEventListener('keydown', preventKeyEvents);
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+
+    const allowNormalKeyboardShortcuts = () => {
+        document.removeEventListener('keydown', preventKeyEvents);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+
+    const preventKeyEvents = (e) => {
+        const forbiddenKeys = ['Tab', 'Escape', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'Control', 'Alt', 'Meta', 'Shift', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        if (forbiddenKeys.includes(e.key)) {
+            e.preventDefault();
+        }
+    };
+
+    const handleBeforeUnload = (e) => {
+        e.preventDefault();
+        e.returnValue = '';
+    };
+
+    const exitSEB = () => {
+        const sebCommand = {
+            "exit": true
+        };
+        window.location.href = `sebs://command/${btoa(JSON.stringify(sebCommand))}`;
+    };
+
+    const startVideoStream = () => {
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+                const socket = new SockJS('http://localhost:8080/video-stream');
+                stompClient.current = Stomp.over(socket);
+                stompClient.current.connect({}, () => {
+                    console.log('WebSocket connected');
+                    stompClient.current.send(`/app/video`, {}, JSON.stringify({ studentId, stream }));
+                }, error => {
+                    console.error('WebSocket connection error', error);
+                });
+            })
+            .catch(error => {
+                console.error('Error accessing webcam:', error);
+            });
     };
 
     if (!isPasswordVerified) {
@@ -153,6 +270,12 @@ function StudentExamPage() {
                 </button>
             </div>
             <button type="button" className="button-logout" onClick={handleLogout}>Logout</button>
+            {remainingTime !== null && (
+                <div className="timer">
+                    Time Remaining: {Math.floor(remainingTime / 60)}:{remainingTime % 60 < 10 ? '0' : ''}{remainingTime % 60}
+                </div>
+            )}
+            <video ref={videoRef} autoPlay className="student-video"></video>
         </div>
     );
 }
