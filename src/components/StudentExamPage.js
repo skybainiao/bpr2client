@@ -12,8 +12,11 @@ function StudentExamPage() {
     const [answers, setAnswers] = useState([]);
     const [studentId, setStudentId] = useState(null);
     const [remainingTime, setRemainingTime] = useState(null);
+    const [grades, setGrades] = useState([]); // 初始化为一个空数组
+    const [view, setView] = useState('exam'); // 用于切换视图
     const videoRef = useRef(null);
     const stompClient = useRef(null);
+    const peerConnection = useRef(null);
 
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem('user'));
@@ -199,25 +202,98 @@ function StudentExamPage() {
         window.location.href = `sebs://command/${btoa(JSON.stringify(sebCommand))}`;
     };
 
-    const startVideoStream = () => {
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
+    const startVideoStream = async () => {
+        try {
+            peerConnection.current = new RTCPeerConnection();
+            const socket = new SockJS('http://localhost:8080/video-stream');
+            stompClient.current = Stomp.over(socket);
+
+            stompClient.current.connect({}, async () => {
+                console.log('WebSocket connected');
+
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
+                    console.log('Local video stream started');
                 }
-                const socket = new SockJS('http://localhost:8080/video-stream');
-                stompClient.current = Stomp.over(socket);
-                stompClient.current.connect({}, () => {
-                    console.log('WebSocket connected');
-                    stompClient.current.send(`/app/video`, {}, JSON.stringify({ studentId, stream }));
-                }, error => {
-                    console.error('WebSocket connection error', error);
+
+                stream.getTracks().forEach(track => {
+                    peerConnection.current.addTrack(track, stream);
+                    console.log('Track added to peer connection:', track);
                 });
-            })
-            .catch(error => {
-                console.error('Error accessing webcam:', error);
+
+                peerConnection.current.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('Sending ICE candidate:', event.candidate);
+                        stompClient.current.send("/app/video-stream", {}, JSON.stringify({
+                            type: "candidate",
+                            candidate: event.candidate,
+                            studentId: studentId
+                        }));
+                    }
+                };
+
+                peerConnection.current.oniceconnectionstatechange = () => {
+                    if (peerConnection.current) {
+                        console.log('ICE connection state changed:', peerConnection.current.iceConnectionState);
+                    }
+                };
+
+                const offer = await peerConnection.current.createOffer();
+                await peerConnection.current.setLocalDescription(offer);
+                console.log('Sending offer:', offer);
+
+                stompClient.current.send("/app/video-stream", {}, JSON.stringify({
+                    type: "offer",
+                    offer: peerConnection.current.localDescription,
+                    studentId: studentId
+                }));
             });
+
+            stompClient.current.onclose = () => {
+                console.log('WebSocket connection closed');
+            };
+
+            stompClient.current.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        } catch (error) {
+            console.error('Error starting video stream:', error);
+        }
     };
+
+    const fetchGrades = async () => {
+        try {
+            const response = await fetch(`http://localhost:8080/scores/student/${studentId}`);
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                setGrades(data);
+            } else {
+                setGrades([]);
+            }
+        } catch (error) {
+            console.error('Error fetching grades:', error);
+            alert('Failed to fetch grades');
+        }
+    };
+
+    if (view === 'grades') {
+        return (
+            <div className="exam-container">
+                <h1>Your Grades</h1>
+                <ul>
+                    {grades.map(grade => (
+                        <li key={grade.exam.id}>
+                            <p>Exam: {grade.exam.title}</p>
+                            <p>Score: {grade.score}</p>
+                        </li>
+                    ))}
+                </ul>
+                <button className="button-secondary" onClick={() => setView('exam')}>Back to Exam</button>
+                <button type="button" className="button-logout" onClick={handleLogout}>Logout</button>
+            </div>
+        );
+    }
 
     if (!isPasswordVerified) {
         return (
@@ -238,6 +314,10 @@ function StudentExamPage() {
                         <button type="button" className="button-secondary" onClick={handleLogout}>Logout</button>
                     </div>
                 </form>
+                <button type="button" className="button-secondary" onClick={() => {
+                    fetchGrades();
+                    setView('grades');
+                }}>View Grades</button>
             </div>
         );
     }
